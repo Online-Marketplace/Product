@@ -1,0 +1,13 @@
+version: '3.1'
+
+services:
+  db: # Set the desired name here
+    container_name: product
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: product123456
+    volumes:
+      - ./data:/var/lib/mysql
+    ports:
+      - "3307:3306"
