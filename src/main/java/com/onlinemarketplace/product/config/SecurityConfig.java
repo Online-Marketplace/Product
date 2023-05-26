@@ -1,6 +1,6 @@
 package com.onlinemarketplace.product.config;
 
-import com.onlinemarketplace.product.filter.RequestResponseLoggingFilter;
+import com.onlinemarketplace.common.filter.RequestResponseLoggingFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
