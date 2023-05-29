@@ -1,12 +1,21 @@
 package com.onlinemarketplace.product.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onlinemarketplace.product.model.CacheData;
 import com.onlinemarketplace.product.model.Product;
+import com.onlinemarketplace.product.repository.CacheDataRepository;
 import com.onlinemarketplace.product.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ProductService {
@@ -14,8 +23,29 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    @Autowired
+    private CacheDataRepository cacheDataRepository;
+    @Autowired
+    ObjectMapper objectMapper;
+    public Page<Product> getAllProducts(Pageable pageable) throws JsonProcessingException {
+        String cacheKey = "allProducts_" + pageable.getPageNumber() + "_" + pageable.getPageSize();
+        Optional<CacheData> optionalCacheData = cacheDataRepository.findById(cacheKey);
+        // Cache hit
+        if (optionalCacheData.isPresent()) {
+            String productAsString = optionalCacheData.get().getValue();
+            var mapType = new TypeReference<List<Product>>() {};
+            List<Product> productList = objectMapper.readValue(productAsString, mapType);
+            return new PageImpl<>(productList, pageable, productList.size());
+        }
+
+        // Cache miss
+        Page<Product> productPage = productRepository.findAll(pageable);
+        List<Product> productList = productPage.getContent();
+        String productsAsJsonString = objectMapper.writeValueAsString(productList);
+        CacheData cacheData = new CacheData(cacheKey, productsAsJsonString);
+
+        cacheDataRepository.save(cacheData);
+        return productPage;
     }
 
     public Product getProductByIdAndUserId(String productId, String userId) throws ChangeSetPersister.NotFoundException {

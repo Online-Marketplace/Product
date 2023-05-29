@@ -1,9 +1,13 @@
 package com.onlinemarketplace.product.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.onlinemarketplace.product.model.Product;
 import com.onlinemarketplace.product.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,24 +28,33 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    public List<Product> getAllProducts() {
-        return productService.getAllProducts();
+    public Page<Product> getAllProducts(Pageable pageable) throws JsonProcessingException {
+        return productService.getAllProducts(pageable);
     }
 
     @GetMapping("/{productId}")
-    public Product getProductById(@PathVariable("productId") String productId, @RequestHeader("id") String userId) throws ChangeSetPersister.NotFoundException {
-        return productService.getProductByIdAndUserId(productId, userId);
+    public ResponseEntity<Product> getProductById(@PathVariable("productId") String productId, @RequestHeader("id") String userId) throws ChangeSetPersister.NotFoundException {
+        try {
+            Product product = productService.getProductByIdAndUserId(productId, userId);
+            return ResponseEntity.ok(product);
+        } catch (ChangeSetPersister.NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product, @RequestHeader("id") String userId) {
+    public ResponseEntity<Product> createProduct(@RequestBody Product product, @RequestHeader("id") String userId) {
         product.setUserId(userId);
-        return productService.createProduct(product);
+        return ResponseEntity.ok(productService.createProduct(product));
     }
-
     @PutMapping("/{productId}")
-    public Product updateProduct(@PathVariable("productId") String productId, @RequestBody Product updatedProduct, @RequestHeader("id") String userId) throws ChangeSetPersister.NotFoundException {
-        return productService.updateProduct(productId, updatedProduct, userId);
+    public ResponseEntity<Product> updateProduct(@PathVariable("productId") String productId, @RequestBody Product updatedProduct, @RequestHeader("id") String userId) throws ChangeSetPersister.NotFoundException {
+        try {
+            Product product = productService.updateProduct(productId, updatedProduct, userId);
+            return ResponseEntity.ok(product);
+        } catch (ChangeSetPersister.NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{productId}")

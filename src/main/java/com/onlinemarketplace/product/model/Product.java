@@ -18,6 +18,7 @@ public class Product {
     private String name;
     private String description;
     private BigDecimal price;
+    private String categoryId;
     private String userId;
 
     // Constructors, getters, and setters
@@ -69,5 +70,13 @@ public class Product {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(String categoryId) {
+        this.categoryId = categoryId;
     }
 }
