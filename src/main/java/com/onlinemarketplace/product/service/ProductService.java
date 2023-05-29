@@ -12,10 +12,11 @@ import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ProductService {
@@ -54,6 +55,7 @@ public class ProductService {
 
     public Product createProduct(Product product) {
         // Additional validation and business logic can be implemented here
+        deleteCacheData();
         return productRepository.save(product);
     }
 
@@ -64,12 +66,22 @@ public class ProductService {
         existingProduct.setDescription(updatedProduct.getDescription());
         existingProduct.setPrice(updatedProduct.getPrice());
         // Additional updates and business logic can be implemented here
+        deleteCacheData();
         return productRepository.save(existingProduct);
     }
 
     public void deleteProduct(String productId, String userId) throws ChangeSetPersister.NotFoundException {
         Product existingProduct = getProductByIdAndUserId(productId, userId);
         productRepository.delete(existingProduct);
+        deleteCacheData();
+    }
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+    private void deleteCacheData() {
+        Set<String> keysToDelete = redisTemplate.keys("cacheData:allProducts*");
+
+        redisTemplate.delete(keysToDelete);
     }
 }
 
