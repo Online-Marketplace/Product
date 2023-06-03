@@ -3,6 +3,8 @@ package com.onlinemarketplace.product.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.onlinemarketplace.common.ulti.MappingUtils;
+import com.onlinemarketplace.product.dto.ProductDetail;
 import com.onlinemarketplace.product.model.CacheData;
 import com.onlinemarketplace.product.model.Product;
 import com.onlinemarketplace.product.repository.CacheDataRepository;
@@ -23,25 +25,25 @@ public class ProductService {
 
     @Autowired
     private ProductRepository productRepository;
-
     @Autowired
     private CacheDataRepository cacheDataRepository;
     @Autowired
     ObjectMapper objectMapper;
-    public Page<Product> getAllProducts(Pageable pageable) throws JsonProcessingException {
+    public Page<ProductDetail> getAllProducts(Pageable pageable) throws JsonProcessingException {
         String cacheKey = "allProducts_" + pageable.getPageNumber() + "_" + pageable.getPageSize();
         Optional<CacheData> optionalCacheData = cacheDataRepository.findById(cacheKey);
         // Cache hit
         if (optionalCacheData.isPresent()) {
             String productAsString = optionalCacheData.get().getValue();
-            var mapType = new TypeReference<List<Product>>() {};
-            List<Product> productList = objectMapper.readValue(productAsString, mapType);
+            var mapType = new TypeReference<List<ProductDetail>>() {};
+            List<ProductDetail> productList = objectMapper.readValue(productAsString, mapType);
             return new PageImpl<>(productList, pageable, productList.size());
         }
 
         // Cache miss
-        Page<Product> productPage = productRepository.findAll(pageable);
-        List<Product> productList = productPage.getContent();
+        Page<Product> productEntityPage = productRepository.findAll(pageable);
+        List<ProductDetail> productList = MappingUtils.copyProperties(productEntityPage.getContent(), ProductDetail.class);
+        Page<ProductDetail> productPage = new PageImpl<>(productList, pageable, productEntityPage.getTotalElements());
         String productsAsJsonString = objectMapper.writeValueAsString(productList);
         CacheData cacheData = new CacheData(cacheKey, productsAsJsonString);
 
@@ -49,30 +51,42 @@ public class ProductService {
         return productPage;
     }
 
-    public Product getProductByIdAndUserId(String productId, String userId) throws ChangeSetPersister.NotFoundException {
-        return productRepository.findByIdAndUserId(productId, userId).orElseThrow(ChangeSetPersister.NotFoundException::new);
+//    public Page<Product> getProductsByCategoryId(String categoryId, Pageable pageable) {
+//        List<String> categoryIds = categoryService.getAllCategoryIds(categoryId);
+//        return productRepository.findByCategoryIds(categoryIds, pageable);
+//    }
+
+    public ProductDetail getProductByIdAndUserId(String productId, String userId) throws ChangeSetPersister.NotFoundException {
+        Optional<Product> optionalProduct = productRepository.findByIdAndUserId(productId, userId);
+        if (optionalProduct.isEmpty()) {
+            throw new ChangeSetPersister.NotFoundException();
+        }
+        return MappingUtils.copyProperties(optionalProduct.get(), ProductDetail.class);
     }
 
-    public Product createProduct(Product product) {
+    public ProductDetail createProduct(ProductDetail product) {
         // Additional validation and business logic can be implemented here
         deleteCacheData();
-        return productRepository.save(product);
+        var productEntity = MappingUtils.copyProperties(product, Product.class);
+        return MappingUtils.copyProperties(productRepository.save(productEntity), ProductDetail.class);
     }
 
-    public Product updateProduct(String productId, Product updatedProduct, String userId) throws ChangeSetPersister.NotFoundException {
-        Product existingProduct = getProductByIdAndUserId(productId, userId);
+    public ProductDetail updateProduct(String productId, ProductDetail updatedProduct, String userId) throws ChangeSetPersister.NotFoundException {
+        ProductDetail existingProduct = getProductByIdAndUserId(productId, userId);
         // Update the existing product with the new data
         existingProduct.setName(updatedProduct.getName());
         existingProduct.setDescription(updatedProduct.getDescription());
         existingProduct.setPrice(updatedProduct.getPrice());
+        var productToUpdate = MappingUtils.copyProperties(existingProduct, Product.class);
         // Additional updates and business logic can be implemented here
         deleteCacheData();
-        return productRepository.save(existingProduct);
+        return MappingUtils.copyProperties(productRepository.save(productToUpdate), ProductDetail.class);
     }
 
     public void deleteProduct(String productId, String userId) throws ChangeSetPersister.NotFoundException {
-        Product existingProduct = getProductByIdAndUserId(productId, userId);
-        productRepository.delete(existingProduct);
+        ProductDetail existingProduct = getProductByIdAndUserId(productId, userId);
+        var productToDelete = MappingUtils.copyProperties(existingProduct, Product.class);
+        productRepository.delete(productToDelete);
         deleteCacheData();
     }
 
