@@ -9,6 +9,9 @@ import com.onlinemarketplace.product.model.CacheData;
 import com.onlinemarketplace.product.model.Product;
 import com.onlinemarketplace.product.repository.CacheDataRepository;
 import com.onlinemarketplace.product.repository.ProductRepository;
+import om.onlinemarketplace.category.dto.CategoryClient;
+import om.onlinemarketplace.category.dto.CategoryRequest;
+import om.onlinemarketplace.category.dto.CategoryResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
@@ -29,6 +32,8 @@ public class ProductService {
     private CacheDataRepository cacheDataRepository;
     @Autowired
     ObjectMapper objectMapper;
+
+    CategoryClient categoryClient = new CategoryClient();
     public Page<ProductDetail> getAllProducts(Pageable pageable) throws JsonProcessingException {
         String cacheKey = "allProducts_" + pageable.getPageNumber() + "_" + pageable.getPageSize();
         Optional<CacheData> optionalCacheData = cacheDataRepository.findById(cacheKey);
@@ -51,10 +56,15 @@ public class ProductService {
         return productPage;
     }
 
-//    public Page<Product> getProductsByCategoryId(String categoryId, Pageable pageable) {
-//        List<String> categoryIds = categoryService.getAllCategoryIds(categoryId);
-//        return productRepository.findByCategoryIds(categoryIds, pageable);
-//    }
+    public Page<Product> getProductsByCategoryId(String categoryId, Pageable pageable) {
+        CategoryRequest categoryRequest = new CategoryRequest();
+        CategoryResponse categoryResponse = categoryClient.sendGetRequest("/" + categoryId + "/children",categoryRequest).getBody();
+        List<String> categoryIds = null;
+        if (categoryResponse != null) {
+            categoryIds = categoryResponse.getCategoryIds();
+        }
+        return productRepository.findByCategoryIds(categoryIds, pageable);
+    }
 
     public ProductDetail getProductByIdAndUserId(String productId, String userId) throws ChangeSetPersister.NotFoundException {
         Optional<Product> optionalProduct = productRepository.findByIdAndUserId(productId, userId);
