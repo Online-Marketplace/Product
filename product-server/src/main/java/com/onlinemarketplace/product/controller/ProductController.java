@@ -34,8 +34,9 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    public ResponseEntity<ProductResponse> getAllProducts(Pageable pageable) throws JsonProcessingException {
-        var productPage = productService.getAllProducts(pageable);
+    public ResponseEntity<ProductResponse> getAllProducts(ProductRequest productRequest,Pageable pageable) throws JsonProcessingException {
+        productRequest.setPageable(pageable);
+        var productPage = productService.getAllProducts(productRequest);
 
         var productResponse = new ProductResponse();
         productResponse.setProductDetailList(productPage.getContent());
